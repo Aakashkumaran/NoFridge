@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f3d2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-512.png"><link rel="apple-touch-icon" href="icon-512.png">
+<title>NoFridge</title>
+<style>
+:root{--bg:#f6f0e2;--card:#fffaf0;--ink:#1b1b18;--g:#1f3d2b;--sage:#a9b9a0;--tom:#d8512f;--line:#e3dac5;--mut:#6b6a5e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Georgia,'Iowan Old Style',serif;padding-bottom:84px}
+h1{font-size:28px;line-height:1.15;margin:8px 0}h2{font-size:19px;margin:18px 0 8px}h3{margin:6px 0;font-size:17px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 0}
+.brand{font:700 22px Georgia,serif;color:var(--g)}main{padding:8px 16px;max-width:760px;margin:0 auto}
+.mut{color:var(--mut)}.small{font-size:13px}
+button,.btn{font:inherit;font-size:15px;color:var(--ink);background:#efe7d3;border:1px solid var(--line);border-radius:12px;padding:11px 14px;cursor:pointer;min-height:44px;display:inline-block}
+button.pri{background:var(--g);color:#fff;border-color:var(--g);font-weight:600}button.big{width:100%}
+button.sm{padding:6px 10px;min-height:36px;font-size:14px}button.danger{color:var(--tom);border-color:var(--tom)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--tom);outline-offset:2px}
+button[disabled]{opacity:.4}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}.row>button{flex:1}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:6px 0;scrollbar-width:none}.chip{white-space:nowrap;border-radius:99px;padding:8px 14px;min-height:40px}
+.chip.on,.seg .on{background:var(--g);color:#fff;border-color:var(--g)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}.card.note{background:#eef2e6;border-color:var(--sage)}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:12px 0}.pic svg{display:block;width:100%;height:110px}.pic.big svg{height:160px;border-radius:14px}
+.rb{padding:12px 14px 14px}.meta{font-size:14px;color:var(--g);font-weight:600}.why{font-size:14px;margin-top:3px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#e6dfc9;margin-left:6px}.tag.hot{background:var(--tom);color:#fff;margin:0 0 4px}.tag.warn{background:#f6d9ce;color:#8a2c12}
+.q{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.q .n{flex:1}.card.q{padding:10px 14px}
+.inl{display:inline-flex;gap:6px;align-items:center;margin:4px 10px 4px 0}.chk{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:17px}
+input[type=number],input[type=search],select,textarea{font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:9px;background:#fff;max-width:100%}
+input[type=search]{width:100%;margin:8px 0}input[type=number]{width:96px}textarea{width:100%}
+input[type=checkbox],input[type=radio]{width:20px;height:20px;accent-color:var(--g)}
+.seg{display:inline-flex;gap:4px}.seg button{padding:6px 10px;min-height:36px;font-size:14px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fffaf0;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;border-radius:0;background:none;padding:14px 4px}nav button.on{color:var(--g);font-weight:700;box-shadow:inset 0 3px 0 var(--tom)}
+.ov{position:fixed;inset:0;background:rgba(27,27,24,.5);z-index:10;overflow:auto;padding:16px}
+.sh{position:relative;background:var(--bg);border-radius:20px;padding:18px;max-width:640px;margin:0 auto}
+.x{position:absolute;right:10px;top:10px;width:44px;padding:0;font-size:22px}
+.bigtxt{font-size:26px;line-height:1.35;margin:18px 0}.tmr{font-size:24px;font-weight:700;color:var(--tom);min-width:70px}
+.safe{background:#fdf1d8;border-left:4px solid #c98a1a;padding:8px 12px;margin:8px 0;font-size:14px;border-radius:8px}
+details{margin:10px 0}summary{cursor:pointer;font-weight:600;padding:8px 0}.prow .ph{margin-bottom:4px}
+ol{padding-left:20px}a{color:var(--g)}
+@media(min-width:720px){.picks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}}
+@media(prefers-reduced-motion:no-preference){.ov{animation:f .2s}@keyframes f{from{opacity:0}}}
+</style></head>
+<body><div id="app"></div><div id="sheet"></div>
+<script>
+// ================= NOFRIDGE ENGINE (pure, local, deterministic; no network) =================
+const FRESH_MS=18*3600e3; // fridge-less: perishables count as usable only if bought/opened within this window
+const CATS=["Grains & flour","Pulses & legumes","Soy & plant protein","Dairy","Vegetables","Fruits","Condiments & sauces","Oils & fats","Spices & seasonings","Ready-to-eat","Other"];
+const EQ_OPTS=[["induction","Induction / electric stovetop"],["gas","Gas stove"],["kettle","Electric kettle / boiler"],["airfryer","Air fryer"],["micro","Microwave"],["rc","Rice cooker"],["mixer","Mixer / grinder"],["none","No appliance (ready-to-eat only)"]];
+const EQN={stove:"a stove (induction or gas)",water:"a kettle or stove to boil water",airfryer:"an air fryer",micro:"a microwave",rc:"a rice cooker",mixer:"a mixer/grinder"};
+function hasEq1(c,e){switch(c){case"stove":return e.includes("induction")||e.includes("gas");case"water":return e.includes("kettle")||e.includes("induction")||e.includes("gas");case"airfryer":return e.includes("airfryer");case"micro":return e.includes("micro");case"rc":return e.includes("rc");case"mixer":return e.includes("mixer")}return false}
+const hasEq=(code,eq)=>code.split("|").some(c=>hasEq1(c,eq||[]));
+
+// ---- ingredient reference: nutrition n=[kcal,protein,carb,fat,fibre] per nb (100 g/ml, or 1 piece) in the stated state.
+// Values are APPROXIMATE typical food-composition figures (not looked up live). Prices are ₹ estimates per nb; editable by the user.
+// p: 0 shelf-stable, 1 produce (room temp, short life), 2 needs refrigeration | dt: 0 vegan,1 vegetarian(dairy),2 egg | ao: becomes perishable once opened
+const I={};
+[
+["pasta","Pasta (dry)",0,"g",[371,13,75,1.5,3],12,{al:["gluten"],pk:200,sg:"Airtight container, dry place.",a:"penne macaroni spaghetti"}],
+["noodles","Instant noodles (70 g pack)",0,"pcs",[310,6.5,43,13,1.5],14,{al:["gluten"],sg:"Keep sealed and dry. Use the sachet the day you open it.",a:"maggi ramen"}],
+["rice","Rice (raw)",0,"g",[360,7,79,.6,1.3],6,{pk:500,sg:"Airtight container, dry place."}],
+["atta","Atta (wheat flour)",0,"g",[340,12,71,1.7,11],4.5,{al:["gluten"],pk:500,sg:"Airtight container; keep dry."}],
+["poha","Poha (flattened rice)",0,"g",[350,6.6,77,1.2,2],7,{pk:250,sg:"Airtight container, dry place.",a:"aval flattened rice"}],
+["murmura","Murmura (puffed rice)",0,"g",[402,6,87,1,1],10,{pk:200,sg:"Airtight; it goes soggy in humidity.",a:"puffed rice mamra"}],
+["channa_dry","Dry black channa",1,"g",[364,19,61,6,17],12,{pk:250,sg:"Airtight, dry place. Needs overnight soaking and thorough boiling.",a:"kala chana chickpea"}],
+["channa_can","Cooked chickpeas (sealed tin/pouch)",1,"g",[164,8.9,27,2.6,7.6],9,{ao:1,pk:200,sg:"Sealed: dry place. Once opened it is perishable; use it in one sitting.",a:"chole canned chickpeas ready to eat"}],
+["moong_dry","Moong dal (split, dry)",1,"g",[347,24,63,1.2,16],13,{pk:250,sg:"Airtight container, dry place."}],
+["toor_dry","Toor dal (dry)",1,"g",[343,22,63,1.5,15],16,{pk:250,sg:"Airtight container, dry place."}],
+["peanuts","Roasted peanuts (ready-to-eat)",1,"g",[567,26,16,49,8.5],14,{al:["peanut"],pk:200,sg:"Airtight; they turn rancid in heat over weeks.",a:"moongfali groundnut"}],
+["roasted_chana","Roasted chana (ready-to-eat)",9,"g",[380,20,58,6,17],14,{pk:200,sg:"Airtight; keep dry so it stays crisp.",a:"bhuna chana"}],
+["soya_dry","Soya chunks (dry)",2,"g",[345,52,33,.5,13],16,{al:["soy"],pk:200,sg:"Airtight, dry place. Always soak/boil before eating.",a:"nutrela meal maker soy"}],
+["paneer","Paneer",3,"g",[296,18,3.4,23,0],38,{p:2,dt:1,al:["dairy"],pk:200,sg:"Perishable and needs refrigeration. With no fridge, buy it the day you cook.",a:"cottage cheese"}],
+["tomato","Tomato",4,"g",[18,.9,3.9,.2,1.2],4,{p:1,sg:"Cool, ventilated spot. Use within a few days; discard soft or mouldy ones.",a:"tamatar"}],
+["onion","Onion",4,"g",[40,1.1,9,.1,1.7],3.5,{p:1,sg:"Dark, ventilated, dry spot.",a:"pyaz kanda"}],
+["potato","Potato",4,"g",[77,2,17,.1,2.2],3,{p:1,sg:"Dark, ventilated spot; discard green or sprouting ones.",a:"aloo"}],
+["cucumber","Cucumber",4,"g",[15,.7,3.6,.1,.5],4,{p:1,sg:"Cool spot; use within a few days.",a:"kheera"}],
+["green_chilli","Green chilli",4,"g",[40,2,9,.2,1.5],8,{p:1,sg:"Cool, dry spot; use within a few days.",a:"hari mirch"}],
+["capsicum","Capsicum",4,"g",[20,.9,4.6,.2,1.7],8,{p:1,sg:"Cool spot; use within a few days.",a:"bell pepper shimla mirch"}],
+["carrot","Carrot",4,"g",[41,.9,9.6,.2,2.8],5,{p:1,sg:"Cool spot; use within a few days.",a:"gajar"}],
+["garlic","Garlic",4,"g",[149,6.4,33,.5,2.1],20,{p:1,pk:50,sg:"Dry, ventilated spot.",a:"lehsun"}],
+["ginger","Ginger",4,"g",[80,1.8,18,.8,2],15,{p:1,pk:50,sg:"Cool, dry spot.",a:"adrak"}],
+["coriander","Coriander leaves",4,"g",[23,2.1,3.7,.5,2.8],10,{p:1,pk:50,sg:"Wilts fast; buy small and use the same day.",a:"dhania cilantro"}],
+["lemon","Lemon",5,"pcs",[20,.6,6,.2,1.6],4,{p:1,pk:1,sg:"Cool spot; use within days.",a:"nimbu"}],
+["egg","Egg",10,"pcs",[72,6.3,.4,4.8,0],7,{p:1,dt:2,al:["egg"],pk:2,sg:"Never use cracked eggs; buy only what you'll use within days.",a:"anda"}],
+["schezwan","Schezwan sauce",6,"g",[130,2,28,1.5,1],56,{al:["soy","gluten"],pk:200,sg:"Follow the label after opening; buy small packs without a fridge."}],
+["chilli_sauce","Chilli sauce",6,"g",[80,1,18,.5,.5],30,{pk:200,sg:"Follow the label after opening."}],
+["tomato_sauce","Tomato sauce / ketchup",6,"g",[100,1.2,25,.1,.4],24,{pk:200,sg:"Follow the label after opening.",a:"ketchup"}],
+["mayo_tandoori","Tandoori mayonnaise",6,"g",[300,1,10,28,0],40,{pk:200,sg:"Check the label (eggless?) and storage after opening; buy small packs without a fridge.",a:"mayonnaise"}],
+["oil","Cooking oil",7,"ml",[828,0,0,92,0],15,{pk:200,sg:"Cool, dark place; keep capped.",a:"refined sunflower"}],
+["salt","Salt",8,"g",[0,0,0,0,0],2,{pk:50}],
+["pepper","Black pepper",8,"g",[251,10,64,3.3,25],80,{pk:50}],
+["garam","Garam masala",8,"g",[379,15,45,15,30],60,{pk:50}],
+["chilli_flakes","Chilli flakes",8,"g",[282,12,50,14,35],50,{pk:50}],
+["oregano","Oregano",8,"g",[265,9,69,4,43],70,{pk:50}],
+["chaat_masala","Chaat masala",8,"g",[250,8,45,6,25],50,{pk:50}],
+["turmeric","Turmeric powder",8,"g",[312,10,67,3,22],20,{pk:50,a:"haldi"}],
+["cumin","Cumin seeds",8,"g",[375,18,44,22,11],40,{pk:50,a:"jeera"}],
+["chilli_powder","Red chilli powder",8,"g",[282,12,50,14,35],30,{pk:50}]
+].forEach(([id,name,c,u,n,pr,o])=>{I[id]=Object.assign({id,name,c,u,nb:u==="pcs"?1:100,n,pr,pk:u==="pcs"?1:100,p:0,dt:0,al:[],ao:0,sg:"",a:""},o||{})});
+const ALLERGENS=["gluten","soy","peanut","dairy","egg"];
+
+// ---- recipes: R(id,name,desc,cuisine,meal,"ing:qty,opt:qty?","equipment|alt",prep,cook,wait,servings,effort1-5,cleanup1-5,spice0-3,group,style,"tags",[steps "text|timerMin"],note)
+const RECIPES=[];
+function R(id,n,d,cu,meal,ing,eq,prep,cook,wait,sv,eff,cl,spice,grp,style,tags,steps,note){
+ RECIPES.push({id,n,d,cu,meal,ing:ing.split(",").map(s=>{const o=s.endsWith("?");const [i,q]=s.replace("?","").split(":");return{id:i,q:+q,o}}),eq:eq?eq.split(","):[],prep,cook,wait,sv,eff,cl,spice,grp,style,tags:tags.split(" "),steps:steps.map(s=>{const[t,m]=s.split("|");return{t,m:m?+m:0}}),note:note||"",fridge:false});
+}
+R("soya_salad","Spiced soya with cucumber-tomato-onion salad","Soft spiced soya over a crunchy fresh salad.","Indian","lunch","soya_dry:50,cucumber:100,tomato:80,onion:40,salt:2,garam:1,pepper:1?,chilli_flakes:1?,lemon:0.5?,chaat_masala:1?","water",8,5,15,1,1,1,1,"soy","boil","tangy fresh spicy",["Pour just-boiled water over the soya chunks in a bowl and soak until fully soft|15","Drain and squeeze out the water. Boil in fresh water 5 min if you have a stove|5","Chop the cucumber, tomato and onion","Toss the soya with garam masala, salt and any pepper or flakes","Mix with the salad; finish with lemon or chaat masala if you have it"],"Dry soya chunks are not ready-to-eat. Always soak or boil first.");
+R("soya_noodles","Soya masala noodles","Instant noodles bulked up with soya and onion.","Indo-Chinese","dinner","noodles:1,soya_dry:30,onion:40,tomato:40?,green_chilli:1?,garam:1?,oil:5?,salt:1?","stove",8,10,15,1,2,2,2,"noodle","stirfry","spicy saucy comfort",["Soak the soya chunks in just-boiled water until soft, then squeeze dry|15","Boil the noodle cake 2 min in a pot, drain","Heat the pan (with a little oil if you have it); fry onion, chilli and tomato 3 min|3","Add soya, garam masala and the noodle sachet; fry 2 min|2","Toss in the noodles and mix well"],"Use the tastemaker sachet the same day you open it.");
+R("schezwan_soya_noodles","Schezwan soya noodles","Hot, saucy noodles with soya for protein.","Indo-Chinese","dinner","noodles:1,soya_dry:30,schezwan:20,onion:40,capsicum:40?,oil:5?,chilli_flakes:1?","stove",8,10,15,1,2,2,3,"noodle","stirfry","spicy saucy",["Soak soya chunks in just-boiled water until soft; squeeze dry|15","Boil the noodle cake 2 min; drain","Stir-fry onion (and capsicum) 3 min|3","Add soya and schezwan sauce; cook 2 min|2","Add noodles and toss until coated"],"");
+R("af_masala_paneer","Air-fryer masala paneer","Tandoori-style paneer cubes, crisp outside, soft inside.","Indian","snack","paneer:100,mayo_tandoori:15,garam:1,salt:1,pepper:1,oil:3?","airfryer",5,10,10,1,1,1,2,"paneer","airfry","spicy crispy",["Cube the paneer and coat with tandoori mayo, garam masala, salt and pepper","Rest 10 min|10","Air-fry at 180 °C for 8 to 10 min, turning once|10","Eat hot"],"Paneer is perishable: use it fresh the same day when you have no fridge.");
+R("paneer_tomato_skillet","Paneer and tomato skillet","Saucy tomato-onion paneer in one pan.","Indian","dinner","paneer:100,tomato:150,onion:60,garam:1.5,salt:2,oil:10,green_chilli:1?,chilli_powder:1?","stove",8,15,0,1,2,2,2,"paneer","saute","saucy spicy comfort",["Heat the oil; fry onion until golden|5","Add tomato, green chilli and spices; cook down to a thick sauce|8","Add the paneer cubes and a splash of water; simmer 3 min|3","Serve hot"],"Cook only what you'll eat now.");
+R("paneer_bhurji","Paneer bhurji","Dry, crumbly spiced paneer scramble.","Indian","breakfast","paneer:100,onion:50,tomato:60,garam:1,salt:2,oil:8,green_chilli:1?","stove",6,10,0,1,1,1,2,"paneer","saute","spicy comfort",["Heat the oil; fry onion 3 min|3","Add tomato and chilli; cook 3 min|3","Crumble in the paneer with garam masala and salt; stir 3 min|3","Serve at once"],"");
+R("af_paneer_bites","Air-fryer crispy paneer bites","Lightly coated paneer pieces with a ketchup dip.","Indian","snack","paneer:100,atta:15,garam:1,salt:1,chilli_flakes:1?,tomato_sauce:20?,oil:5?","airfryer",8,10,0,1,2,2,1,"paneer","airfry","crispy",["Mix atta, garam masala, salt and a splash of water into a thin paste","Toss paneer cubes in the paste","Air-fry at 180 °C for 10 min, shaking halfway|10","Serve with tomato sauce"],"Eat the same day.");
+R("af_potato_masala","Air-fryer crisp potato masala","Crisp wedges with garam masala and pepper.","Indian","snack","potato:250,garam:1,salt:2,pepper:1,chilli_flakes:1?,tomato_sauce:15?,oil:5?","airfryer",6,22,0,1,1,1,2,"potato","airfry","crispy spicy",["Cut potatoes into wedges; soak in water 10 min if you have time, then dry well|10","Toss with spices (and a little oil if you have it)","Air-fry at 190 °C for 20 to 22 min, shaking twice|22","Serve with tomato sauce"],"");
+R("af_chilli_potato","Air-fryer chilli potato","Crisp potato tossed in a sticky chilli glaze.","Indo-Chinese","snack","potato:200,chilli_sauce:15,tomato_sauce:15,onion:30?,capsicum:40?,salt:1,oil:5?","airfryer",8,20,0,1,2,2,2,"potato","airfry","spicy saucy crispy",["Cut potatoes into thin fingers and dry well","Air-fry at 190 °C for 15 min until crisp|15","Warm the two sauces in a bowl; toss in the fries and onion or capsicum","Eat immediately while crisp"],"");
+R("af_soya_bites","Air-fryer crispy soya bites","Rehydrated soya, tandoori-coated and air-fried.","Indian","snack","soya_dry:40,mayo_tandoori:10,garam:1,salt:1,pepper:1,chilli_flakes:1?","water,airfryer",5,12,15,1,2,2,2,"soy","airfry","crispy spicy",["Soak soya chunks in just-boiled water until soft|15","Squeeze out all water, boil 5 min in fresh water if you can|5","Coat with mayo and spices","Air-fry at 180 °C for 10 to 12 min, shaking once|12"],"Dry soya chunks must be soaked and cooked first.");
+R("channa_chaat_can","Channa chaat (ready cooked chickpeas)","No-cook chickpea chaat with onion, tomato, cucumber.","Indian","snack","channa_can:150,onion:40,tomato:60,cucumber:60,salt:1,green_chilli:1?,lemon:0.5?,chaat_masala:1?,chilli_flakes:1?,tomato_sauce:10?","",8,0,0,1,1,1,1,"channa","nocook","tangy fresh",["Drain the cooked chickpeas","Chop onion, tomato, cucumber and chilli","Mix everything with salt, lemon and chaat masala"],"Opened tinned or pouch chickpeas are perishable: finish the whole opened portion in one sitting.");
+R("channa_masala_dry","Channa masala (from dry channa)","Slow-cooked black channa in a spiced onion-tomato gravy.","Indian","dinner","channa_dry:70,onion:80,tomato:120,green_chilli:1,garam:2,salt:3,oil:12,turmeric:1?,chilli_powder:1?,ginger:3?","stove",15,100,480,1,4,4,2,"channa","simmer","spicy comfort saucy",["Rinse the channa and soak in plenty of water for at least 8 hours or overnight|480","Drain; boil in fresh water with salt until completely soft (no pressure cooker: allow about 60 to 75 min)|70","Heat oil; fry onion until brown|8","Add tomato, chilli and spices; cook to a thick masala|8","Stir in the boiled channa with a little cooking water; simmer 10 min|10"],"Long recipe: soaking is unattended waiting time. Channa must be boiled until completely soft.");
+R("channa_salad_dry","Boiled channa salad (from dry channa)","Boiled black channa tossed with fresh onion, tomato, cucumber.","Indian","lunch","channa_dry:60,onion:40,tomato:60,cucumber:60,salt:2,pepper:1,lemon:0.5?,chaat_masala:1?","stove",10,70,480,1,3,3,1,"channa","boil","tangy fresh",["Rinse and soak the channa for at least 8 hours or overnight|480","Boil in fresh salted water until completely soft (allow about 60 to 75 min on a stove without a pressure cooker)|70","Drain; cool a few minutes","Toss with chopped onion, tomato, cucumber, pepper and lemon"],"Long recipe. Never eat under-cooked pulses.");
+R("spiced_pasta","Spiced tomato-onion pasta","Sauteed tomato and onion sauce over pasta.","Fusion","dinner","pasta:90,tomato:120,onion:50,salt:2,oil:8,oregano:1?,chilli_flakes:1?,green_chilli:1?","stove",8,18,0,1,2,2,2,"pasta","saute","saucy spicy comfort",["Boil pasta in salted water until al dente; keep a cup of the water|10","Heat oil; fry onion 3 min, then tomato until pulpy|8","Add oregano, flakes and salt; stir in pasta with a splash of pasta water","Serve hot"],"");
+R("saucy_pasta","Tomato-chilli sauce pasta (no oil)","Boiled pasta tossed in a tomato-chilli sauce blend.","Fusion","dinner","pasta:90,tomato_sauce:40,chilli_sauce:15,salt:2,pepper:1,onion:40?,oregano:1?,chilli_flakes:1?","stove",5,12,0,1,1,1,2,"pasta","boil","saucy",["Boil pasta in salted water until al dente|10","Drain, keeping a few spoons of water","Mix the two sauces with pepper, oregano and flakes; toss with the pasta and water","Top with raw onion if you have it"],"");
+R("pasta_soya","Soya-loaded masala pasta","Pasta with soya for extra protein, in a schezwan-tomato sauce.","Fusion","dinner","pasta:70,soya_dry:30,schezwan:15,tomato_sauce:20,onion:40,salt:1?,oil:5?","stove",10,15,15,1,3,3,2,"pasta","saute","saucy spicy",["Soak soya chunks in just-boiled water until soft; squeeze dry|15","Boil pasta until al dente|10","Fry onion and soya 4 min|4","Add schezwan and tomato sauce; fold in the pasta"],"");
+R("kettle_noodles","Kettle noodles with fresh crunch","Instant noodles with just a kettle, plus chilli sauce and raw veg.","Indo-Chinese","snack","noodles:1,chilli_sauce:10,onion:20?,cucumber:50?,tomato_sauce:5?","water",3,5,0,1,1,1,2,"noodle","kettle","spicy saucy",["Break the noodle cake into a bowl and cover with just-boiled water; cover 4 min|4","Drain most of the water; stir in sachet and chilli sauce","Top with raw onion and cucumber"],"Handle boiling water carefully.");
+R("egg_bhurji","Egg bhurji","Spiced scrambled eggs with onion and tomato.","Indian","breakfast","egg:2,onion:40,tomato:50,salt:1,oil:8,green_chilli:1?,garam:1?","stove",5,8,0,1,1,1,2,"egg","saute","spicy comfort",["Heat oil; fry onion and chilli 3 min|3","Add tomato; cook 2 min|2","Beat in eggs with salt; stir until fully set|3"],"Cook eggs until firm throughout. Eat now.");
+R("egg_masala","Egg masala","Boiled eggs in an onion-tomato masala.","Indian","dinner","egg:2,onion:80,tomato:100,garam:1.5,salt:2,oil:10,green_chilli:1?","stove",8,20,0,1,2,2,2,"egg","simmer","saucy spicy comfort",["Hard-boil the eggs 10 min, cool, peel|10","Fry onion in oil until golden; add tomato and spices; cook to a masala|10","Slit the eggs, add, and simmer 3 min|3"],"Cook eggs fully. Eat now.");
+R("egg_chaat","Boiled egg chaat","Hard-boiled eggs with fresh onion and tomato.","Indian","snack","egg:2,onion:30,tomato:40,salt:1,pepper:1,cucumber:40?,lemon:0.5?,chilli_flakes:1?","stove",5,10,0,1,1,1,1,"egg","boil","tangy fresh",["Hard-boil eggs 10 min, cool and peel|10","Chop eggs and veg; toss with salt, pepper, flakes and lemon"],"Eat now; don't leave cooked eggs out.");
+R("veg_pulao","Simple vegetable pulao","One-pot pulao with potato, onion and garam masala.","Indian","dinner","rice:80,onion:40,potato:80,garam:1.5,salt:2,oil:10,carrot:40?,green_chilli:1?","stove|rc",8,25,0,1,2,2,1,"rice","onepot","comfort",["Rinse the rice","Heat oil; fry onion, potato, carrot and spices 4 min|4","Add rice and about 2x water; cover and cook until done|18","Rest 5 min, fluff, eat"],"Cooked rice shouldn't sit out; eat it now.");
+R("soya_pulao","Soya pulao","Protein-rich one-pot pulao with soya.","Indian","dinner","rice:70,soya_dry:30,onion:40,garam:1.5,salt:2,oil:10,green_chilli:1?","stove|rc",8,25,15,1,3,2,2,"rice","onepot","spicy comfort",["Soak soya chunks in just-boiled water until soft; squeeze dry|15","Fry onion and soya in oil with spices 4 min|4","Add rinsed rice and about 2x water; cook covered|18","Rest and fluff"],"Cooked rice shouldn't sit out; eat it now.");
+R("rc_tomato_rice","Rice-cooker tomato rice","Tomato, onion and garam masala cooked with rice in a cooker.","Indian","dinner","rice:80,tomato:80,onion:40,garam:1,salt:2,oil:8?","rc",5,25,0,1,1,1,1,"rice","onepot","comfort",["Rinse rice; add to the cooker with chopped tomato, onion, spices, salt and water about 1.8x the rice","Start the cooker; when it clicks off, rest 5 min and fluff|25"],"Cooked rice shouldn't sit out; eat it now.");
+R("moong_khichdi","Moong dal khichdi","Soft one-pot rice and moong comfort food.","Indian","dinner","rice:50,moong_dry:40,salt:2,turmeric:1?,oil:5?,ginger:3?,cumin:1?","stove|rc",5,30,15,1,1,1,0,"dal","onepot","comfort",["Rinse rice and moong together and soak|15","Cook with 4x water, salt and turmeric until completely soft and porridge-like|25","Finish with a little oil or ginger if you have it"],"Eat now; pulses and rice don't keep at room temperature.");
+R("dal_tadka","Simple dal tadka","Toor dal with a tomato-onion tadka.","Indian","dinner","toor_dry:50,tomato:60,onion:40,salt:2,oil:8,turmeric:1?,cumin:1?,chilli_powder:1?","stove",8,45,20,1,2,2,1,"dal","simmer","comfort saucy",["Rinse the dal and soak|20","Boil with water, salt and turmeric until fully soft, about 40 min|40","Heat oil; fry cumin, onion, tomato; pour over the dal and simmer 3 min|5"],"Boil dal thoroughly. Eat now.");
+R("moong_chilla","Moong dal chilla","Savoury lentil pancakes from soaked, ground moong.","Indian","breakfast","moong_dry:60,onion:30,green_chilli:1,salt:2,oil:5","stove,mixer",10,15,240,1,3,3,1,"dal","griddle","crispy",["Soak moong 4 hours|240","Grind with water, chilli and salt to a pourable batter","Heat a lightly oiled pan; spread a ladle of batter; sprinkle onion|3","Cook both sides until golden; repeat"],"Use the batter the same day; don't store it.");
+R("jeera_aloo_roti","Jeera aloo with roti","Dry potato sabzi with fresh rotis.","Indian","dinner","potato:200,atta:70,oil:10,salt:2,cumin:1?,turmeric:1?,chilli_powder:1?","stove",15,35,0,1,3,3,1,"potato","saute","comfort",["Knead atta with water and a pinch of salt; rest 10 min|10","Fry cumin, add cubed potato, salt, spices and a splash of water; cover and cook until tender|20","Roll and cook rotis on a hot pan","Eat hot"],"");
+R("bhel","Murmura bhel","No-cook puffed rice snack with fresh veg.","Indian","snack","murmura:40,onion:30,tomato:40,salt:1,cucumber:40?,peanuts:15?,tomato_sauce:10?,chilli_sauce:5?,lemon:0.5?","",8,0,0,1,1,1,1,"nocook","nocook","tangy crispy fresh",["Chop onion, tomato and cucumber","Mix everything just before eating so it stays crisp"],"Eat immediately.");
+R("peanut_chaat","Peanut masala chaat","No-cook roasted peanut chaat.","Indian","snack","peanuts:40,onion:30,tomato:40,salt:1,cucumber:40?,green_chilli:1?,lemon:0.5?,chaat_masala:1?","",8,0,0,1,1,1,2,"nocook","nocook","tangy crispy fresh",["Chop onion, tomato, chilli and cucumber","Mix with peanuts, salt, lemon and chaat masala"],"Peanut allergen.");
+R("roasted_chana_chaat","Roasted chana chaat","No-cook crunchy roasted chana chaat.","Indian","snack","roasted_chana:50,onion:30,tomato:40,salt:1,cucumber:40?,lemon:0.5?,chaat_masala:1?,chilli_flakes:1?","",8,0,0,1,1,1,1,"nocook","nocook","tangy crispy fresh",["Chop onion, tomato and cucumber","Toss with roasted chana, salt, lemon and chaat masala"],"");
+R("kanda_poha","Kanda poha","Classic onion poha with peanuts.","Indian","breakfast","poha:60,onion:50,salt:1,oil:8,potato:40?,peanuts:15?,green_chilli:1?,lemon:0.5?,turmeric:1?","stove",8,10,0,1,1,1,1,"poha","saute","comfort tangy",["Rinse poha in a sieve until soft; drain well|3","Heat oil; fry peanuts, onion, chilli (and potato) until soft|7","Add poha, salt, turmeric; toss 2 min|2","Finish with lemon"],"");
+R("kettle_poha","No-stove poha","Poha softened with hot water, tossed with raw veg.","Indian","breakfast","poha:60,salt:1,onion:30?,tomato:30?,peanuts:15?,lemon:0.5?,chilli_flakes:1?","water",5,0,5,1,1,1,1,"poha","kettle","tangy fresh",["Rinse the poha in a sieve","Pour a little just-boiled water over it; cover 5 min|5","Fluff; mix in salt, chopped onion or tomato, peanuts and lemon"],"");
+
+// ---- explicit substitution map (recipe-specific where needed). Never silent: always listed in the result.
+const SUBS=[
+{f:"chilli_flakes",t:"green_chilli",q:1,m:"1 fresh chilli ≈ 1 g flakes; fresher heat",tc:0},
+{f:"green_chilli",t:"chilli_flakes",q:1,m:"1 g flakes ≈ 1 green chilli",tc:0},
+{f:"schezwan",t:"chilli_sauce",q:1,m:"Milder, less garlic",r:["schezwan_soya_noodles","pasta_soya"],tc:0},
+{f:"tomato_sauce",t:"chilli_sauce",q:.7,m:"Hotter, thinner",r:["bhel","kettle_noodles","saucy_pasta"],tc:0},
+{f:"soya_dry",t:"paneer",q:2.2,m:"No soaking needed (saves ~15 min), softer texture; adds dairy",r:["soya_noodles","soya_pulao"],tc:-15}
+];
+const NO_SUB_NOTE={channa_can:"Dry channa is not a substitute for cooked chickpeas: it needs overnight soaking and long boiling.",soya_dry:"Soya chunks cannot replace ready-to-eat protein without soaking and cooking."};
+
+// ---- core helpers
+const DR={vegan:0,veg:1,egg:2,non:3,any:3};
+const recDiet=r=>r.ing.reduce((m,x)=>x.o?m:Math.max(m,I[x.id].dt),0);
+const needFresh=(g,it)=>g.p===2||(g.ao&&it&&it.o);
+const priceOf=(id,ctx)=>{const u=ctx.prices&&ctx.prices[id];return typeof u==="number"&&u>=0?u:I[id].pr};
+const unitCost=(id,amt,ctx)=>amt>0?amt*priceOf(id,ctx)/I[id].nb:0;
+const buyCost=(id,amt,ctx)=>{if(!(amt>0))return 0;const g=I[id];return Math.ceil(amt/g.pk)*g.pk*priceOf(id,ctx)/g.nb};
+const roleW=g=>g.c===8?.25:(g.c===6||g.c===7)?.5:(g.c===4||g.c===5)?1:2;
+function usable(id,ctx){
+ const it=ctx.pantry[id],g=I[id];
+ if(!it){if((ctx.staples||[]).includes(id))return{ok:true,q:null,unk:true,staple:true};return{ok:false,reason:"none"}}
+ if(it.st==="out")return{ok:false,reason:"finished"};
+ if(needFresh(g,it)&&ctx.prefs.setup==="none"&&!(it.t&&ctx.now-it.t<FRESH_MS))return{ok:false,reason:"stale"};
+ const unk=typeof it.q!=="number"||!isFinite(it.q);
+ return{ok:true,q:unk?null:it.q,unk,low:it.st==="low"};
+}
+const blocked=(id,P)=>I[id].al.some(a=>(P.exAl||[]).includes(a))||(P.exIng||[]).includes(id)||I[id].dt>DR[P.diet||"any"];
+
+// ---- ingredient coverage (quantity-weighted)
+function coverage(r,ctx){
+ const P=ctx.prefs,sv=P.sv>0?P.sv:1,sc=sv/(r.sv>0?r.sv:1);
+ const rows=[],miss=[],subs=[],used=[];let ws=0,cs=0,unc=0;
+ for(const x of r.ing){
+  const g=I[x.id],need=x.q*sc,u=usable(x.id,ctx);
+  if(x.o){ if(!blocked(x.id,P)&&u.ok)used.push({id:x.id,q:need}); rows.push({x,g,need,u,st:u.ok?"have":"missing",opt:true});continue }
+  const w=roleW(g);ws+=w;let c=0,st="have",have=0,sub=null;
+  if(u.ok){ if(u.unk){c=1;st="uncertain";unc++;have=need} else{have=u.q;c=Math.min(u.q/need,1);st=c>=1?"have":"partial"} }
+  else st=u.reason==="stale"?"stale":u.reason==="finished"?"finished":"missing";
+  if(c<1&&P.subs!==false){
+   const s=SUBS.find(s=>s.f===x.id&&(!s.r||s.r.includes(r.id))&&!blocked(s.t,P)&&(()=>{const v=usable(s.t,ctx);return v.ok&&(v.unk||v.q>=(need-have)*s.q)})());
+   if(s){sub={from:x.id,to:s.t,q:Math.round((need-have)*s.q*10)/10,note:s.m,tc:s.tc};subs.push(sub);c=Math.max(c,.9);st="swap"}
+  }
+  const short=sub?0:Math.max(need-have,0);
+  if(!sub&&c<1)miss.push({id:x.id,need:Math.round(need*10)/10,have:u.ok&&!u.unk?have:0,buy:Math.round(short*10)/10,cost:buyCost(x.id,short,ctx),reason:st});
+  cs+=w*c;rows.push({x,g,need,u,st,have,sub});
+ }
+ return{rows,miss,subs,used,cov:ws?cs/ws:1,unc};
+}
+
+// ---- nutrition: sums ingredient quantity × density / servings. Unknown data => null, never zero.
+function nutri(r,usedOpt,sv){
+ const keys=["k","p","c","f","fi"],tot=[0,0,0,0,0];let unknown=false;
+ const list=r.ing.filter(x=>!x.o).concat((usedOpt||[]).map(o=>({id:o.id,q:o.q/(sv>0?sv/r.sv:1)})));
+ for(const x of list){const g=I[x.id];if(!g||!Array.isArray(g.n)){unknown=true;continue}for(let i=0;i<5;i++)tot[i]+=x.q*g.n[i]/g.nb}
+ const d=r.sv>0?r.sv:1;
+ if(unknown)return{k:null,p:null,c:null,f:null,fi:null,unknown:true};
+ const o={unknown:false};keys.forEach((k,i)=>o[k]=Math.round(tot[i]/d*10)/10);return o;
+}
+
+// ---- food safety (conservative; no jokes, no guessed shelf lives)
+const SAFE={
+ channa_dry:"Dry channa needs overnight soaking and thorough boiling. It is not a quick-cook food, and under-cooked pulses are unsafe.",
+ soya_dry:"Dry soya chunks are not ready-to-eat. Soak in hot water and cook before eating.",
+ paneer:"Paneer is perishable. Buy it fresh the day you cook, or keep it refrigerated as per the pack. Do not treat it as a room-temperature staple.",
+ channa_can:"Opened cooked chickpeas are perishable. Use the whole opened portion in one sitting and follow the pack label.",
+ egg:"Cook eggs until white and yolk are firm. Never use cracked eggs.",
+ rice:"Cooked rice should not sit at room temperature. Eat it now.",
+ moong_dry:"Boil pulses until completely soft.",toor_dry:"Boil pulses until completely soft."
+};
+function safetyWarnings(r,ctx){
+ const w=[];
+ if(ctx.prefs.setup==="none"&&r.eq.length)w.push("Cook only the portion you'll eat now. You don't have a fridge for leftovers.");
+ for(const x of r.ing){if(x.o)continue;const m=SAFE[x.id];if(m&&!w.includes(m))w.push(m)}
+ return w;
+}
+const leftoverAdvice=setup=>setup==="none"?"No fridge: finish the meal in one sitting. Don't keep cooked food for later.":"Cool quickly, refrigerate within 2 hours, eat within a day or two, and reheat until steaming hot.";
+const canKeepCooked=setup=>setup!=="none";
+
+// ---- scoring
+const DEFW={av:.30,af:.20,pri:.20,time:.10,nut:.10,taste:.05,clean:.05};
+const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+function evaluate(r,ctx){
+ const P=ctx.prefs,F=ctx.filters||{},sv=P.sv>0?P.sv:1;
+ const rej=(kind,msg)=>({r,ok:false,kind,msg});
+ if(recDiet(r)>DR[P.diet||"any"])return rej("diet","Doesn't match your diet.");
+ for(const e of r.eq)if(!hasEq(e,P.eq))return rej("equipment","Needs "+EQN[e.split("|")[0]]+".");
+ if(r.fridge&&P.setup==="none")return rej("fridge","Needs refrigeration.");
+ for(const x of r.ing)if(!x.o&&blocked(x.id,P))return rej("allergen",I[x.id].name+" is excluded by your settings.");
+ if(F.airfryer&&!r.eq.includes("airfryer")&&!r.eq.some(e=>e.includes("airfryer")))return rej("filter","Not an air-fryer recipe.");
+ if(F.nocook&&r.eq.length)return rej("filter","Needs cooking.");
+ if(F.onepot&&r.cl>2)return rej("filter","More cleanup than one-pot.");
+ const total=r.prep+r.cook+r.wait,active=r.prep+r.cook;
+ if(F.max&&total>F.max)return rej("time","Takes "+total+" min.");
+ const c=coverage(r,ctx);
+ if(c.miss.length&&!ctx.shop){
+  const m=c.miss.map(x=>{const g=I[x.id];return x.reason==="stale"?g.name+" isn't safe to use without a fridge unless bought today":x.reason==="finished"?g.name+" is finished":g.name+" missing"});
+  return rej("missing",m.join("; ")+".");
+ }
+ // cost: consumed (what the meal actually uses) vs incremental (what you'd have to buy)
+ let consumed=0;for(const row of c.rows)if(!row.opt||c.used.some(u=>u.id===row.x.id))consumed+=unitCost(row.x.id,row.need,ctx);
+ const cost=consumed/sv,incr=c.miss.reduce((a,m)=>a+m.cost,0);
+ if(P.budget>0&&P.strictBudget&&cost>P.budget)return rej("budget","About "+Math.round(cost)+" per serving, over your strict budget.");
+ const nut=nutri(r,c.used,sv);
+ if(F.protein&&(nut.p==null||nut.p<15))return rej("filter","Under 15 g protein.");
+ const w=Object.assign({},DEFW,P.w||{}),pri=F.pri||(P.pri&&P.pri[0])||"balanced";
+ const B=P.budget>0?P.budget:0;
+ const aff=clamp((B?(cost<=B?100:100-(cost-B)/B*100):60)-(B?Math.min(30,incr/B*30):Math.min(30,incr/60*30)));
+ const tT=F.max||P.maxTime||0;
+ const time=tT?(total<=tT?100:clamp(100-(total-tT)/tT*100)):clamp(100*(1-Math.min(total,240)/240));
+ const pT=P.protT>0?P.protT:20,kT=P.calT>0?P.calT:550;
+ const nutS=nut.unknown?50:clamp(50*Math.min(nut.p/pT,1)+50*(1-Math.min(Math.abs(nut.k-kT)/kT,1)));
+ const ppr=nut.unknown||cost<=0?0:nut.p/cost;
+ const taste=(P.likes||[]).length?clamp(60+20*r.tags.filter(t=>P.likes.includes(t)).length):60;
+ const prio={cheap:clamp(100*(1-cost/80)),protein:nut.unknown?30:clamp(50*Math.min(nut.p/30,1)*2*.5+50*Math.min(ppr/3,1)),balanced:nutS,fast:time,taste,clean:clamp((5-r.cl)/4*100)}[pri]??nutS;
+ const clean=clamp((5-r.cl)/4*100);
+ const avail=c.cov*100;
+ let score=(w.av*avail+w.af*aff+w.pri*prio+w.time*time+w.nut*nutS+w.taste*taste+w.clean*clean)/(w.av+w.af+w.pri+w.time+w.nut+w.taste+w.clean);
+ if(ctx.hist&&ctx.hist.some(h=>h.rid===r.id&&ctx.now-h.t<72*3600e3))score-=5;
+ score=clamp(score);
+ const why=[];
+ if(!c.miss.length)why.push(c.subs.length?"Works with a swap from your pantry.":incr===0?"You have everything. No extra shopping needed.":"");
+ else why.push("Missing "+c.miss.length+": "+c.miss.map(m=>I[m.id].name.toLowerCase()).join(", ")+" (about ₹"+Math.round(incr)+" to buy).");
+ if(!nut.unknown&&cost>0)why.push("~"+Math.round(nut.p)+" g protein for ~₹"+Math.round(cost)+".");
+ if(total<=15)why.push("Ready in "+total+" minutes.");
+ if(r.eq.includes("airfryer")&&r.cl<=2)why.push("Uses your air fryer with very little cleanup.");
+ const mains=c.rows.filter(z=>!z.x.o&&(z.g.c===2||z.g.c===3||z.g.c===1)&&z.u.ok).map(z=>z.g.name.split(" (")[0].toLowerCase());
+ if(mains.length&&!c.miss.length)why.push("Uses your "+mains.join(" and ")+".");
+ return{r,ok:true,score,adj:score,cov:c.cov,miss:c.miss,subs:c.subs,rows:c.rows,incr,cost,consumed,nut,total,active,wait:r.wait,why:why.filter(Boolean),warns:safetyWarnings(r,ctx),conf:(c.unc>0||nut.unknown)?"low":"medium",unc:c.unc,pri};
+}
+const cmp=(a,b)=>(Math.round(b.score*100)-Math.round(a.score*100))||(b.cov-a.cov)||(a.incr-b.incr)||(a.total-b.total)||(a.r.id<b.r.id?-1:a.r.id>b.r.id?1:0);
+function getRecommendations(ctx){
+ const recipes=ctx.recipes||RECIPES;
+ const all=recipes.map(r=>evaluate(r,ctx)),rejected=all.filter(x=>!x.ok),ok=all.filter(x=>x.ok).sort(cmp);
+ // greedy diversity re-rank: similar dominant protein / cooking style slides down when similarly scored alternatives exist
+ const pool=ok.slice(),ranked=[];
+ while(pool.length){
+  for(const x of pool)x.adj=x.score-6*ranked.filter(y=>y.r.grp===x.r.grp).length-3*ranked.filter(y=>y.r.style===x.r.style).length;
+  let bi=0;for(let i=1;i<pool.length;i++){const a=pool[i],b=pool[bi],d=Math.round(a.adj*100)-Math.round(b.adj*100);if(d>0||(d===0&&cmp(a,b)<0))bi=i}
+  ranked.push(pool.splice(bi,1)[0]);
+ }
+ let unlock=[];
+ if(ranked.length<3){
+  const c2=Object.assign({},ctx,{shop:true}),cnt={};
+  for(const r of recipes){const e=evaluate(r,c2);if(e.ok&&e.miss.length===1)cnt[e.miss[0].id]=(cnt[e.miss[0].id]||0)+1}
+  unlock=Object.keys(cnt).map(id=>({id,count:cnt[id]})).sort((a,b)=>b.count-a.count||(a.id<b.id?-1:1));
+ }
+ return{ranked,rejected,unlock};
+}
+function surprise(ranked,rand){const top=ranked.filter(x=>x.score>=(ranked[0]?ranked[0].score:0)-15).slice(0,5);return top.length?top[Math.floor((rand||Math.random)()*top.length)%top.length]:null}
+
+// ---- pantry deduction: never removes a whole packet for a small portion
+function consume(pantry,r,sv,sel){
+ const out=JSON.parse(JSON.stringify(pantry)),sc=(sv>0?sv:1)/(r.sv>0?r.sv:1),changes=[];
+ for(const x of r.ing){
+  if(!sel.includes(x.id)||!out[x.id])continue;const it=out[x.id],need=x.q*sc;
+  if(typeof it.q==="number"&&isFinite(it.q)){it.q=Math.max(0,Math.round((it.q-need)*10)/10);if(it.q===0)it.st="out";changes.push({id:x.id,used:need,left:it.q})}
+  else{it.st="out";changes.push({id:x.id,used:null,left:null})}
+ }
+ return{pantry:out,changes};
+}
+
+// ---- shopping list: merge duplicates, subtract pantry; fresh-only perishables are bought on the day (no fridge)
+const todayStr=(d=new Date())=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function shoppingList(plan,ctx,opt){
+ const need={};
+ for(const e of plan){const r=RECIPES.find(x=>x.id===e.rid);if(!r)continue;const sc=(e.sv>0?e.sv:1)/(r.sv>0?r.sv:1),isToday=e.day===todayStr(new Date(ctx.now));
+  for(const x of r.ing){if(x.o&&!(opt&&opt.optional))continue;if(blocked(x.id,ctx.prefs))continue;
+   const n=need[x.id]||(need[x.id]={id:x.id,today:0,future:0,days:[]});n[isToday?"today":"future"]+=x.q*sc;if(!n.days.includes(e.day))n.days.push(e.day)}}
+ const items=[];
+ for(const id of Object.keys(need).sort()){
+  const n=need[id],g=I[id],it=ctx.pantry[id],total=n.today+n.future;let have=0,uncertain=false,fresh=false;
+  const q=it&&it.st!=="out"?it.q:0;
+  if(it&&it.st!=="out"&&typeof q!=="number")uncertain=true;
+  const perish=g.p===2||(g.ao&&it&&it.o);
+  let buy;
+  if(perish&&ctx.prefs.setup==="none"){fresh=true;const freshQ=it&&it.t&&ctx.now-it.t<FRESH_MS&&typeof q==="number"?q:0;buy=Math.max(n.today-freshQ,0)+n.future}
+  else{have=typeof q==="number"?q:0;buy=uncertain?0:Math.max(total-have,0)}
+  buy=Math.round(buy*10)/10;
+  if(buy<=0&&!uncertain)continue;
+  items.push({id,name:g.name,u:g.u,need:Math.round(total*10)/10,have:Math.round(have*10)/10,buy,cost:buyCost(id,buy,ctx),fresh,uncertain,days:n.days.sort()});
+ }
+ return{items,total:items.reduce((a,i)=>a+i.cost,0)};
+}
+
+// ---- validation of persisted/imported data
+function defaultState(){return{v:1,onb:false,prefs:{diet:"veg",setup:"none",eq:[],pri:["balanced"],budget:null,strictBudget:false,protT:20,calT:550,sv:1,spice:2,skill:"any",shop:false,maxTime:null,hist:true,subs:true,likes:[],exAl:[],exIng:[],w:{}},pantry:{},staples:[],prices:{},plan:[],hist:[],cook:null}}
+function sanitize(raw){
+ if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
+ const d=defaultState(),p=raw.prefs&&typeof raw.prefs==="object"?raw.prefs:{},P=d.prefs;
+ const num=(v,def,lo=0,hi=1e6)=>typeof v==="number"&&isFinite(v)&&v>=lo&&v<=hi?v:def;
+ const arr=(v,ok)=>Array.isArray(v)?[...new Set(v.filter(ok))]:[];
+ if(["vegan","veg","egg","non","any"].includes(p.diet))P.diet=p.diet;
+ if(["none","fridge","limited"].includes(p.setup))P.setup=p.setup;
+ P.eq=arr(p.eq,e=>EQ_OPTS.some(o=>o[0]===e));
+ P.pri=arr(p.pri,e=>["cheap","protein","balanced","fast","taste","clean"].includes(e));if(!P.pri.length)P.pri=["balanced"];
+ P.budget=p.budget==null?null:num(p.budget,null,1,5000);P.strictBudget=!!p.strictBudget;
+ P.protT=num(p.protT,20,1,200);P.calT=num(p.calT,550,50,3000);P.sv=num(p.sv,1,1,8)||1;P.spice=num(p.spice,2,0,3);
+ P.skill=["any","easy","medium"].includes(p.skill)?p.skill:"any";P.shop=!!p.shop;P.maxTime=p.maxTime==null?null:num(p.maxTime,null,1,1000);
+ P.hist=p.hist!==false;P.subs=p.subs!==false;P.likes=arr(p.likes,e=>typeof e==="string"&&e.length<20);
+ P.exAl=arr(p.exAl,e=>ALLERGENS.includes(e));P.exIng=arr(p.exIng,e=>!!I[e]);
+ if(raw.pantry&&typeof raw.pantry==="object"&&!Array.isArray(raw.pantry))for(const id of Object.keys(raw.pantry)){
+  const it=raw.pantry[id];if(!I[id]||!it||typeof it!=="object")continue;
+  d.pantry[id]={id,q:typeof it.q==="number"&&isFinite(it.q)&&it.q>=0?it.q:null,st:["have","low","out"].includes(it.st)?it.st:"have",o:!!it.o,t:typeof it.t==="number"&&isFinite(it.t)?it.t:null};
+ }
+ d.staples=arr(raw.staples,e=>!!I[e]);
+ if(raw.prices&&typeof raw.prices==="object")for(const id of Object.keys(raw.prices))if(I[id]&&typeof raw.prices[id]==="number"&&raw.prices[id]>=0)d.prices[id]=raw.prices[id];
+ if(Array.isArray(raw.plan))d.plan=raw.plan.filter(e=>e&&RECIPES.some(r=>r.id===e.rid)&&/^\d{4}-\d\d-\d\d$/.test(e.day)).map(e=>({rid:e.rid,day:e.day,sv:num(e.sv,1,1,8)||1})).slice(0,60);
+ if(Array.isArray(raw.hist))d.hist=raw.hist.filter(h=>h&&RECIPES.some(r=>r.id===h.rid)&&typeof h.t==="number").map(h=>({rid:h.rid,t:h.t,rate:num(h.rate,0,0,3)})).slice(-100);
+ if(raw.cook&&typeof raw.cook==="object"&&RECIPES.some(r=>r.id===raw.cook.rid))d.cook={rid:raw.cook.rid,step:num(raw.cook.step,0,0,50),checks:raw.cook.checks&&typeof raw.cook.checks==="object"?raw.cook.checks:{}};
+ d.onb=!!raw.onb;
+ return d;
+}
+const PRESETS={
+ sample:{eq:["induction","kettle","airfryer","mixer"],items:{pasta:300,noodles:4,soya_dry:200,channa_dry:250,paneer:200,tomato:300,onion:400,potato:500,cucumber:200,green_chilli:40,salt:500,pepper:50,garam:50,schezwan:150,chilli_sauce:150,tomato_sauce:200,oregano:20,chilli_flakes:30,mayo_tandoori:150}},
+ staples:{eq:[],items:{rice:1000,atta:1000,toor_dry:500,moong_dry:500,poha:250,murmura:150,peanuts:200,roasted_chana:150,oil:500,turmeric:50,cumin:50,chilli_powder:50,chaat_masala:30,salt:500,onion:500,potato:500,tomato:300,garlic:50,ginger:50,lemon:4}}
+};
+
+// ================= UI =================
+const KEY="nofridge_v1";
+let S=(()=>{try{const s=sanitize(JSON.parse(localStorage.getItem(KEY)));if(s)return s}catch(e){}return defaultState()})();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const rs=n=>"₹"+Math.round(n);
+const U={tab:"cook",F:{},res:null,sheet:null,off:false,optional:false,fin:null,timer:null,copy:"",pq:"",cat:"all",ob:0};
+const CH=[["max15","Under 15 min"],["protein","High protein"],["cheap","Cheapest"],["noshop","No shopping"],["onepot","One-pot / low cleanup"],["airfryer","Air fryer"],["nocook","No-cook"]];
+const PRI=[["cheap","Cheapest meals"],["protein","High protein"],["balanced","Balanced nutrition"],["fast","Fastest meals"],["taste","Best taste"],["clean","Minimal cleanup"]];
+const DIETS=[["veg","Vegetarian"],["vegan","Vegan"],["egg","Eggetarian"],["non","Non-vegetarian"],["any","No preference"]];
+const SETUPS=[["none","No fridge"],["fridge","Fridge available"],["limited","Limited fridge space"]];
+const LIKES=["spicy","tangy","crispy","saucy","comfort","fresh"];
+const setupLabel=()=>(SETUPS.find(s=>s[0]===S.prefs.setup)||SETUPS[0])[1];
+const rec=id=>RECIPES.find(r=>r.id===id);
+function ctx(F){const p=S.prefs;return{pantry:S.pantry,prefs:p,filters:F||{},prices:S.prices,now:Date.now(),staples:S.staples,shop:!!p.shop&&!(F&&F.noshop),hist:p.hist?S.hist:[]}}
+function plate(g,id){
+ const C={soy:"#b5703a",channa:"#c9923f",paneer:"#e7b95a",potato:"#d9a443",pasta:"#d9503a",noodle:"#e08a2e",rice:"#e8dcae",egg:"#f0c040",poha:"#e8c547",nocook:"#7fa86a",dal:"#d7a33c"};
+ let h=0;for(const ch of id)h=(h*31+ch.charCodeAt(0))%997;
+ const dots=[0,1,2,3,4].map(i=>{const a=(h+i*73)%360*Math.PI/180,rr=8+(h*(i+3))%12;return`<circle cx="${60+rr*Math.cos(a)}" cy="${42+rr*Math.sin(a)}" r="${3+i%3}" fill="${["#d8512f","#4f7a46","#f6f0e2","#8a3b1e","#a9b9a0"][i]}"/>`}).join("");
+ return`<svg viewBox="0 0 120 80" role="img" aria-label="Illustration" preserveAspectRatio="xMidYMid meet"><rect width="120" height="80" fill="#e9e1cd"/><circle cx="60" cy="42" r="31" fill="#fffaf0" stroke="#d9cfb7"/><circle cx="60" cy="42" r="23" fill="${C[g]||"#8aa07a"}"/>${dots}</svg>`;
+}
+// ---------- tabs ----------
+function header(){return`<header><div><div class="brand">NoFridge</div><div class="mut">Less waste. Less spending. Better meals.</div></div>${U.off?'<span class="tag" role="status">Offline</span>':""}</header>`}
+function nav(){return`<nav>${[["cook","Cook"],["pantry","Pantry"],["plan","Plan"],["settings","Settings"]].map(([k,n])=>`<button class="${U.tab===k?"on":""}" ${U.tab===k?'aria-current="page"':""} onclick="go('${k}')">${n}</button>`).join("")}</nav>`}
+function go(t){U.tab=t;U.sheet=null;render()}
+function cookTab(){
+ const n=Object.values(S.pantry).filter(i=>i.st!=="out").length;
+ let h=`<h1>What can you cook right now?</h1><p class="mut">${n} usable ingredient${n===1?"":"s"} · ${setupLabel()}</p>`;
+ if(S.cook&&rec(S.cook.rid))h+=`<div class="card note">You were cooking <b>${esc(rec(S.cook.rid).n)}</b>. <button class="sm" onclick="resume()">Resume</button></div>`;
+ if(!S.prefs.eq.length)h+=`<div class="card note">No appliances selected yet, so only no-cook meals can appear. <button class="sm" onclick="go('settings')">Set equipment</button></div>`;
+ if(!n)h+=`<div class="card"><b>Your pantry isn't empty. It's just empty on the app.</b><p class="mut">Give me your ingredients and I'll find dinner.</p><button class="pri" onclick="go('pantry')">Add ingredients</button> <button onclick="loadPreset('sample')">Try the sample pantry</button></div>`;
+ h+=`<div class="chips" role="group" aria-label="Quick filters">${CH.map(([k,l])=>`<button class="chip ${U.F[k]?"on":""}" aria-pressed="${!!U.F[k]}" onclick="toggleF('${k}')">${l}</button>`).join("")}</div>`;
+ h+=`<div class="row"><button class="pri big" onclick="find()">Find my meal</button><button onclick="surpriseMe()">Surprise me</button></div>`;
+ if(U.res)h+=results();
+ return h;
+}
+function card(x,label){
+ const r=x.r;
+ return`<article class="rcard"><div class="pic">${plate(r.grp,r.id)}</div><div class="rb">${label?`<span class="tag hot">${label}</span>`:""}<h3>${esc(r.n)}</h3>
+ <div class="meta">${x.total} min · ~${rs(x.cost)}/serving · ${x.nut.unknown?"protein n/a":"~"+Math.round(x.nut.p)+" g protein"}</div>
+ ${x.miss.length?`<div class="mut">Missing ${x.miss.length}: ${x.miss.map(m=>esc(I[m.id].name)).join(", ")}</div>`:x.subs.length?'<div class="mut">Swap needed (see recipe)</div>':""}
+ ${x.why.slice(0,2).map(w=>`<div class="why">${esc(w)}</div>`).join("")}
+ <div class="row"><button class="pri" onclick="openR('${r.id}')">Cook this</button><button onclick="planAdd('${r.id}')">Add to plan</button></div></div></article>`;
+}
+function results(){
+ const {ranked,rejected,unlock}=U.res;
+ if(!ranked.length){
+  const kinds={};rejected.forEach(x=>kinds[x.kind]=(kinds[x.kind]||0)+1);
+  const top=Object.keys(kinds).sort((a,b)=>kinds[b]-kinds[a])[0];
+  const why={missing:"most meals need ingredients you don't have",equipment:"most meals need equipment you haven't selected",time:"nothing fits the time filter",filter:"your quick filters are too narrow",diet:"your diet setting rules most of them out",allergen:"your exclusions rule most out",budget:"your strict budget is too low"}[top]||"nothing fits";
+  return`<div class="card"><h3>Nothing fits right now</h3><p>The honest reason: ${why}.</p>${unlock.length?`<p class="mut">One small grocery run could unlock these meals:</p>${unlock.slice(0,3).map(u=>`<div class="q"><div class="n">Buy <b>${esc(I[u.id].name)}</b></div><span class="mut">unlocks ${u.count} meal${u.count>1?"s":""}</span></div>`).join("")}`:""}
+  <div class="row">${!S.prefs.shop?`<button class="pri" onclick="setP('shop',true);find()">Allow shopping</button>`:""}<button onclick="U.F={};find()">Clear filters</button></div></div>`;
+ }
+ const shown=new Set([ranked[0].r.id]);let h=card(ranked[0],"Best match");
+ const pickBy=(label,key,fn)=>{const c=ranked.filter(x=>!shown.has(x.r.id)&&fn(x)!=null);if(!c.length)return"";c.sort((a,b)=>key*(fn(a)-fn(b))||cmp(a,b));shown.add(c[0].r.id);return card(c[0],label)};
+ h+=`<div class="picks">${pickBy("Cheapest",1,x=>x.cost)}${pickBy("Highest protein",-1,x=>x.nut.unknown?null:x.nut.p)}${pickBy("Fastest",1,x=>x.total)}</div>`;
+ const more=ranked.filter(x=>!shown.has(x.r.id)).slice(0,10);
+ if(more.length)h+=`<details><summary>More options (${more.length})</summary>${more.map(x=>card(x)).join("")}</details>`;
+ return h+`<p class="mut small">Costs and nutrition are approximate estimates.</p>`;
+}
+function toggleF(k){
+ U.F[k]=!U.F[k];
+ if(k==="max15"){if(U.F[k])U.F.max=15;else delete U.F.max}
+ if(k==="cheap"){if(U.F[k])U.F.pri="cheap";else delete U.F.pri}
+ if(k==="protein"){if(U.F[k])U.F.pri="protein";else if(!U.F.cheap)delete U.F.pri}
+ if(U.res)U.res=getRecommendations(ctx(U.F));render();
+}
+function find(){U.res=getRecommendations(ctx(U.F));render()}
+function surpriseMe(){find();const s=surprise(U.res.ranked);if(s)openR(s.r.id);else render()}
+// ---------- pantry ----------
+function addIng(id){if(!I[id])return;if(!S.pantry[id])S.pantry[id]={id,q:null,st:"have",o:false,t:(I[id].p===2||I[id].ao)?Date.now():null};else S.pantry[id].st="have";save();render()}
+function setQ(id,v){const it=S.pantry[id];if(!it)return;const n=parseFloat(v);it.q=isFinite(n)&&n>=0?n:null;if(it.q===0)it.st="out";save();render()}
+function setSt(id,st){if(S.pantry[id]){S.pantry[id].st=st;save();render()}}
+function rmIng(id){delete S.pantry[id];save();render()}
+function toggleOpen(id){const it=S.pantry[id];if(it){it.o=!it.o;if(it.o)it.t=Date.now();save();render()}}
+function boughtToday(id){const it=S.pantry[id];if(it){it.t=Date.now();save();render()}}
+function toggleStaple(id){S.staples=S.staples.includes(id)?S.staples.filter(x=>x!==id):S.staples.concat(id);save();render()}
+function loadPreset(k){const p=PRESETS[k];for(const id of Object.keys(p.items))S.pantry[id]={id,q:p.items[id],st:"have",o:false,t:(I[id].p===2||I[id].ao)?Date.now():null};if(p.eq.length)S.prefs.eq=[...new Set(S.prefs.eq.concat(p.eq))];save();render()}
+function adder(){return`<div class="card"><label for="pq"><b>Add ingredients</b></label><input id="pq" type="search" placeholder="Search the catalog (e.g. paneer, aloo)" autocomplete="off" oninput="adderSearch(this.value)" value="${esc(U.pq)}"><div id="ares">${adderRes(U.pq)}</div></div>`}
+function adderRes(q){q=(q||"").toLowerCase().trim();if(!q)return"";const m=Object.values(I).filter(g=>(g.name+" "+g.a).toLowerCase().includes(q)).slice(0,8);return m.length?m.map(g=>`<button class="chip" onclick="addIng('${g.id}')">+ ${esc(g.name)}</button>`).join(" "):'<p class="mut">Not in the catalog yet.</p>'}
+function adderSearch(v){U.pq=v;const e=$("ares");if(e)e.innerHTML=adderRes(v)}
+function pantryTab(){
+ const items=Object.values(S.pantry).filter(i=>U.cat==="all"||I[i.id].c===+U.cat);
+ let h=`<h1>Pantry</h1>${adder()}<div class="chips"><button class="chip ${U.cat==="all"?"on":""}" onclick="U.cat='all';render()">All</button>${CATS.map((c,i)=>`<button class="chip ${U.cat==i?"on":""}" onclick="U.cat=${i};render()">${c}</button>`).join("")}</div>`;
+ if(!Object.keys(S.pantry).length)h+=`<div class="card">Nothing here yet. <button onclick="loadPreset('sample')">Sample pantry</button> <button onclick="loadPreset('staples')">Indian staples</button></div>`;
+ CATS.forEach((c,ci)=>{const g=items.filter(i=>I[i.id].c===ci);if(!g.length)return;h+=`<h2>${c}</h2>`+g.map(pantryRow).join("")});
+ return h;
+}
+function pantryRow(it){
+ const g=I[it.id],stale=needFresh(g,it)&&S.prefs.setup==="none"&&!(it.t&&Date.now()-it.t<FRESH_MS)&&it.st!=="out";
+ return`<div class="card prow"><div class="ph"><b>${esc(g.name)}</b> ${S.staples.includes(it.id)?'<span class="tag">staple</span>':""}${stale?'<span class="tag warn">Needs fresh purchase</span>':""}${it.st==="low"?'<span class="tag">running low</span>':""}${it.st==="out"?'<span class="tag">finished</span>':""}</div>
+ <div class="row"><label class="inl">Qty <input type="number" min="0" step="any" value="${it.q==null?"":it.q}" placeholder="unknown" onchange="setQ('${it.id}',this.value)" aria-label="Quantity of ${esc(g.name)}"> ${g.u}</label>
+ <span class="seg">${[["have","Have"],["low","Low"],["out","Finished"]].map(([k,l])=>`<button class="${it.st===k?"on":""}" onclick="setSt('${it.id}','${k}')">${l}</button>`).join("")}</span></div>
+ <div class="row">${g.ao?`<button class="sm" onclick="toggleOpen('${it.id}')">${it.o?"Opened (tap if sealed)":"Sealed (tap if opened)"}</button>`:""}${(g.p===2||it.o)?`<button class="sm" onclick="boughtToday('${it.id}')">Bought / opened today</button>`:""}<button class="sm" onclick="toggleStaple('${it.id}')">${S.staples.includes(it.id)?"Unmark staple":"Mark as staple"}</button><button class="sm" onclick="rmIng('${it.id}')">Remove</button></div>
+ <div class="mut small">Storage: ${esc(g.sg||"Follow the pack label.")}</div></div>`;
+}
+// ---------- plan ----------
+function planAdd(rid){U.sheet={type:"plan",rid};render()}
+function planSave(rid,day){S.plan.push({rid,day,sv:S.prefs.sv});save();U.sheet=null;U.tab="plan";render()}
+function planRm(i){S.plan.splice(i,1);save();render()}
+function planTab(){
+ const sl=shoppingList(S.plan,ctx(),{optional:U.optional});
+ let h=`<h1>Plan</h1>`;
+ if(!S.plan.length)h+=`<div class="card">No meals planned. Open a recipe and tap "Add to plan".</div>`;
+ const days=[...new Set(S.plan.map(e=>e.day))].sort();
+ for(const d of days)h+=`<h2>${d===todayStr()?"Today":d}</h2>`+S.plan.map((e,i)=>e.day===d?`<div class="card q"><div class="n">${esc(rec(e.rid).n)} <span class="mut">(${e.sv} serving${e.sv>1?"s":""})</span></div><button class="sm" onclick="openR('${e.rid}')">View</button><button class="sm" onclick="planRm(${i})">Remove</button></div>`:"").join("");
+ if(S.plan.length){
+  h+=`<h2>Shopping list</h2><label class="inl"><input type="checkbox" ${U.optional?"checked":""} onchange="U.optional=this.checked;render()"> Include optional ingredients</label>`;
+  if(S.prefs.setup==="none")h+=`<p class="mut small">No fridge: perishables like paneer are bought on the day you cook, not stocked for the week.</p>`;
+  h+=sl.items.length?sl.items.map(i=>`<div class="card q"><div class="n"><b>${esc(i.name)}</b>: buy ${i.buy} ${i.u} <span class="mut">(need ${i.need}, have ${i.have})</span>${i.fresh?'<span class="tag warn">Buy fresh on the day</span>':""}${i.uncertain?'<span class="tag">check your stock</span>':""}</div><span class="mut">~${rs(i.cost)}</span><button class="sm" onclick="markBought('${i.id}',${i.buy})">Bought</button></div>`).join("")+`<p><b>Estimated spend: ${rs(sl.total)}</b> <span class="mut small">(minimum pack or loose-quantity prices, approximate)</span></p><button onclick="copyList()">Copy / share list</button>`:`<div class="card">Everything for these meals is already in your pantry.</div>`;
+  if(U.copy)h+=`<textarea readonly rows="6" onfocus="this.select()">${esc(U.copy)}</textarea>`;
+ }
+ return h;
+}
+function markBought(id,qty){const it=S.pantry[id]||(S.pantry[id]={id,q:0,st:"have",o:false,t:null});it.q=Math.round(((typeof it.q==="number"?it.q:0)+qty)*10)/10;it.st="have";if(I[id].p===2||I[id].ao)it.t=Date.now();save();render()}
+function copyList(){const sl=shoppingList(S.plan,ctx(),{optional:U.optional});U.copy="NoFridge shopping list\n"+sl.items.map(i=>`- ${i.name}: ${i.buy} ${i.u}${i.fresh?" (buy fresh on the day)":""}`).join("\n");try{navigator.clipboard&&navigator.clipboard.writeText(U.copy)}catch(e){}render()}
+// ---------- settings ----------
+function setP(k,v){S.prefs[k]=v;save();render()}
+function toggleArr(k,v){const a=S.prefs[k];S.prefs[k]=a.includes(v)?a.filter(x=>x!==v):a.concat(v);if(k==="pri"&&!S.prefs.pri.length)S.prefs.pri=["balanced"];save();render()}
+function setPrimary(v){S.prefs.pri=[v].concat(S.prefs.pri.filter(x=>x!==v));save();render()}
+function numP(k,v,min){const n=parseFloat(v);S.prefs[k]=isFinite(n)&&n>=(min||0)?n:null;if(k==="sv"&&!S.prefs.sv)S.prefs.sv=1;save();render()}
+function settingsTab(){
+ const P=S.prefs;
+ const opt=(arr,cur,fn)=>arr.map(([k,l])=>`<label class="inl"><input type="radio" name="${fn}" ${cur===k?"checked":""} onchange="setP('${fn}','${k}')"> ${l}</label>`).join(" ");
+ return`<h1>Settings</h1>
+ <div class="card"><b>Storage</b><div>${opt(SETUPS,P.setup,"setup")}</div></div>
+ <div class="card"><b>Diet</b><div>${opt(DIETS,P.diet,"diet")}</div></div>
+ <div class="card"><b>Equipment</b><p class="mut small">Only select what you actually own.</p>${EQ_OPTS.map(([k,l])=>`<label class="inl"><input type="checkbox" ${P.eq.includes(k)?"checked":""} onchange="toggleArr('eq','${k}')"> ${l}</label>`).join("<br>")}</div>
+ <div class="card"><b>Priorities</b><div class="chips">${PRI.map(([k,l])=>`<button class="chip ${P.pri.includes(k)?"on":""}" aria-pressed="${P.pri.includes(k)}" onclick="toggleArr('pri','${k}')">${l}</button>`).join("")}</div><label class="inl">Primary <select onchange="setPrimary(this.value)">${P.pri.map(k=>`<option value="${k}">${PRI.find(p=>p[0]===k)[1]}</option>`).join("")}</select></label></div>
+ <div class="card"><b>Allergens to exclude</b><div>${ALLERGENS.map(a=>`<label class="inl"><input type="checkbox" ${P.exAl.includes(a)?"checked":""} onchange="toggleArr('exAl','${a}')"> ${a}</label>`).join(" ")}</div></div>
+ <div class="card"><b>Budget & goals</b>
+ <label class="inl">Max ₹ per serving <input type="number" min="1" value="${P.budget||""}" placeholder="none" onchange="numP('budget',this.value,1)"></label>
+ <label class="inl"><input type="checkbox" ${P.strictBudget?"checked":""} onchange="setP('strictBudget',this.checked)"> Strict (hide meals over budget)</label>
+ <label class="inl">Protein target (g) <input type="number" min="1" value="${P.protT}" onchange="numP('protT',this.value,1)"></label>
+ <label class="inl">Calories target <input type="number" min="50" value="${P.calT}" onchange="numP('calT',this.value,50)"></label>
+ <label class="inl">Servings <input type="number" min="1" max="8" value="${P.sv}" onchange="numP('sv',this.value,1)"></label></div>
+ <div class="card"><b>Taste likes</b><div class="chips">${LIKES.map(l=>`<button class="chip ${P.likes.includes(l)?"on":""}" onclick="toggleArr('likes','${l}')">${l}</button>`).join("")}</div></div>
+ <div class="card"><b>Behaviour</b>
+ <label class="inl"><input type="checkbox" ${P.shop?"checked":""} onchange="setP('shop',this.checked)"> Allow recipes with missing ingredients (shows what to buy)</label><br>
+ <label class="inl"><input type="checkbox" ${P.subs?"checked":""} onchange="setP('subs',this.checked)"> Suggest ingredient swaps (always shown, never silent)</label><br>
+ <label class="inl"><input type="checkbox" ${P.hist?"checked":""} onchange="setP('hist',this.checked)"> Remember what I cooked (reduces repeats)</label></div>
+ <div class="card"><b>Recently cooked</b>${S.hist.length?S.hist.slice(-6).reverse().map(h=>`<div class="q"><div class="n">${esc(rec(h.rid).n)}</div><span class="mut">${new Date(h.t).toLocaleDateString()}</span></div>`).join("")+`<button class="sm" onclick="S.hist=[];save();render()">Clear history</button>`:'<p class="mut">Nothing yet.</p>'}</div>
+ <div class="card"><b>Your data (stays on this device)</b><div class="row"><button onclick="exportData()">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" hidden onchange="importData(this)"></label><button onclick="openSheet('onb')">Redo setup</button><button onclick="openSheet('safety')">Food safety info</button><button class="danger" onclick="resetAll()">Reset all data</button></div></div>`;
+}
+function exportData(){try{const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="nofridge-backup.json";a.click()}catch(e){alert("Export isn't available in this browser.")}}
+function importData(el){const f=el.files&&el.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const s=sanitize(JSON.parse(r.result));if(!s)throw 0;S=s;save();render();alert("Imported.")}catch(e){alert("That file isn't a valid NoFridge backup. Nothing was changed.")}};r.readAsText(f)}
+function resetAll(){if(confirm("Delete your pantry, preferences, plan and history from this device?")){S=defaultState();U.res=null;try{localStorage.removeItem(KEY)}catch(e){}save();render();openSheet("onb")}}
+// ---------- sheets: recipe, cook mode, finish, plan, onboarding, safety ----------
+function openSheet(t){U.sheet={type:t};U.ob=0;render()}
+function closeSheet(){U.sheet=null;render()}
+function openR(rid){U.sheet={type:"recipe",rid};render()}
+function resume(){U.sheet={type:"cook"};render()}
+function recipeSheet(r){
+ const c=ctx({});c.shop=true;const ev=evaluate(r,c),cov=coverage(r,c),sv=S.prefs.sv,sc=sv/r.sv;
+ const nut=nutri(r,cov.used,sv);
+ const cost=ev.ok?ev.cost:null;
+ return`<div class="sh"><button class="x" onclick="closeSheet()" aria-label="Close">×</button><div class="pic big">${plate(r.grp,r.id)}</div><h2>${esc(r.n)}</h2><p>${esc(r.d)}</p>
+ ${ev.ok?"":`<div class="card note">Not suitable for your setup: ${esc(ev.msg)}</div>`}
+ <div class="meta">Total ${r.prep+r.cook+r.wait} min · active ${r.prep+r.cook} min${r.wait?` · waiting ${r.wait} min`:""} · ${sv} serving${sv>1?"s":""}</div>
+ <div class="meta">${cost!=null?`~${rs(cost)}/serving (est.)`:""} · ${nut.unknown?"nutrition unknown":`~${Math.round(nut.k)} kcal · ${Math.round(nut.p)} g protein · ${Math.round(nut.c)} g carbs · ${Math.round(nut.f)} g fat · ${Math.round(nut.fi)} g fibre`} <span class="mut small">approximate</span></div>
+ <div class="mut">Equipment: ${r.eq.length?r.eq.map(e=>EQN[e.split("|")[0]]).join(", "):"none (no-cook)"}</div>
+ <h3>Ingredients</h3>${cov.rows.map(z=>{const l={have:"✓ have",uncertain:"✓ have (quantity unknown)",partial:"short",missing:"missing",stale:"needs fresh purchase",finished:"finished",swap:"swap available"}[z.st];return`<div class="q"><div class="n">${esc(z.g.name)}${z.x.o?' <span class="mut">(optional)</span>':""}</div><span class="mut">${Math.round(z.need*10)/10} ${z.g.u} · ${z.opt?(z.u.ok?"✓":"not in pantry"):l}</span></div>`}).join("")}
+ ${cov.miss.length?`<div class="card note"><b>To buy:</b> ${cov.miss.map(m=>`${esc(I[m.id].name)} (${m.buy} ${I[m.id].u})`).join(", ")} — about ${rs(cov.miss.reduce((a,m)=>a+m.cost,0))}</div>`:""}
+ ${cov.subs.map(s=>`<div class="card note"><b>Swap:</b> use ${s.q} ${I[s.to].u} ${esc(I[s.to].name)} instead of ${esc(I[s.from].name)}. ${esc(s.note)}${s.tc?` Time change: ${s.tc} min.`:""}</div>`).join("")}
+ ${r.ing.filter(x=>!x.o&&NO_SUB_NOTE[x.id]&&cov.miss.some(m=>m.id===x.id)).map(x=>`<div class="mut small">${NO_SUB_NOTE[x.id]}</div>`).join("")}
+ <h3>Steps</h3><ol>${r.steps.map(s=>`<li>${esc(s.t)}${s.m?` <span class="mut">(${s.m} min)</span>`:""}</li>`).join("")}</ol>
+ ${safetyWarnings(r,c).map(w=>`<div class="safe">${esc(w)}</div>`).join("")}
+ <div class="mut small">${esc(r.note)}</div>
+ <div class="row"><button class="pri" onclick="startCook('${r.id}')">Start cooking</button><button onclick="planAdd('${r.id}')">Add to plan</button></div></div>`;
+}
+function startCook(rid){S.cook={rid,step:0,checks:{}};save();U.sheet={type:"cook"};render()}
+function cookSheet(){
+ const r=rec(S.cook.rid),i=S.cook.step,st=r.steps[i],sc=S.prefs.sv/r.sv;
+ return`<div class="sh cook"><button class="x" onclick="exitCook()" aria-label="Exit cooking">×</button><div class="mut">${esc(r.n)} · step ${i+1} of ${r.steps.length}</div>
+ <div class="bigtxt">${esc(st.t)}</div>
+ ${st.m?`<div class="row"><button onclick="startTimer(${st.m})">Start ${st.m}-min timer</button><span id="tmr" class="tmr">${U.timer?"":""}</span></div>`:""}
+ <div class="row"><button ${i?"":"disabled"} onclick="stepTo(${i-1})">Previous</button>${i<r.steps.length-1?`<button class="pri" onclick="stepTo(${i+1})">Next</button>`:`<button class="pri" onclick="finishCook()">Finish</button>`}</div>
+ <details ${i===0?"open":""}><summary>Ingredients checklist</summary>${r.ing.map(x=>`<label class="chk"><input type="checkbox" ${S.cook.checks[x.id]?"checked":""} onchange="chkIng('${x.id}',this.checked)"> ${esc(I[x.id].name)} — ${Math.round(x.q*sc*10)/10} ${I[x.id].u}${x.o?" (optional)":""}</label>`).join("")}</details>
+ ${safetyWarnings(r,ctx({})).slice(0,2).map(w=>`<div class="safe">${esc(w)}</div>`).join("")}</div>`;
+}
+function stepTo(n){S.cook.step=n;save();render()}
+function chkIng(id,v){S.cook.checks[id]=!!v;save()}
+function exitCook(){U.sheet=null;render()}
+function startTimer(m){U.timer={end:Date.now()+m*60000};tick()}
+function tick(){const e=$("tmr");if(!U.timer)return;const left=Math.max(0,Math.round((U.timer.end-Date.now())/1000));if(e)e.textContent=left?Math.floor(left/60)+":"+String(left%60).padStart(2,"0"):"Time's up";if(left>0)setTimeout(tick,1000);else{try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}U.timer=null}}
+function finishCook(){const r=rec(S.cook.rid);U.fin={rid:r.id,did:null,sel:{},rate:0};r.ing.forEach(x=>{const it=S.pantry[x.id];U.fin.sel[x.id]=!!it&&typeof it.q==="number"&&!x.o});U.sheet={type:"finish"};render()}
+function finDid(v){U.fin.did=v;if(!v){S.cook=null;save();U.sheet=null;U.fin=null}render()}
+function finSel(id,v){U.fin.sel[id]=v;render()}
+function finRate(n){U.fin.rate=n;render()}
+function finSave(){
+ const r=rec(U.fin.rid),sel=Object.keys(U.fin.sel).filter(k=>U.fin.sel[k]);
+ S.pantry=consume(S.pantry,r,S.prefs.sv,sel).pantry;
+ if(S.prefs.hist){S.hist.push({rid:r.id,t:Date.now(),rate:U.fin.rate});S.hist=S.hist.slice(-100)}
+ S.cook=null;U.fin=null;U.sheet=null;save();render();
+}
+function finSheet(){
+ const r=rec(U.fin.rid),sc=S.prefs.sv/r.sv;
+ if(U.fin.did===null)return`<div class="sh"><h2>Did you actually cook it?</h2><p class="mut">Nothing is removed from your pantry unless you say yes.</p><div class="row"><button class="pri" onclick="finDid(true)">Yes, I cooked it</button><button onclick="finDid(false)">No</button></div></div>`;
+ return`<div class="sh"><h2>Mark ingredients used</h2><p class="mut">Known quantities are deducted by what the recipe used, never the whole pack. Unknown quantities are left alone unless you tick them as finished.</p>
+ ${r.ing.filter(x=>S.pantry[x.id]).map(x=>{const it=S.pantry[x.id],known=typeof it.q==="number";return`<label class="chk"><input type="checkbox" ${U.fin.sel[x.id]?"checked":""} onchange="finSel('${x.id}',this.checked)"> ${esc(I[x.id].name)}: ${known?`use ${Math.round(x.q*sc*10)/10} ${I[x.id].u} (have ${it.q})`:"quantity unknown. Tick to mark as finished"}</label>`}).join("")||'<p class="mut">Nothing from this recipe is in your pantry.</p>'}
+ <div class="row">${[1,2,3].map(n=>`<button class="${U.fin.rate>=n?"on":""}" onclick="finRate(${n})" aria-label="${n} star">${"★".repeat(n)}</button>`).join("")}</div><div class="row"><button class="pri" onclick="finSave()">Save</button></div></div>`;
+}
+function planSheet(){const rid=U.sheet.rid,days=[];for(let i=0;i<7;i++){const d=new Date(Date.now()+i*864e5);days.push([todayStr(d),i?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}):"Today"])}
+ return`<div class="sh"><button class="x" onclick="closeSheet()" aria-label="Close">×</button><h2>Add to plan</h2><p>${esc(rec(rid).n)}</p><div class="row">${days.map(([d,l])=>`<button onclick="planSave('${rid}','${d}')">${l}</button>`).join("")}</div></div>`}
+const OB=[
+ ()=>`<h2>Storage</h2>${SETUPS.map(([k,l])=>`<label class="inl"><input type="radio" name="ob" ${S.prefs.setup===k?"checked":""} onchange="setPsilent('setup','${k}')"> ${l}</label>`).join("<br>")}`,
+ ()=>`<h2>Cooking equipment</h2><p class="mut">Select only what you actually have.</p>${EQ_OPTS.map(([k,l])=>`<label class="inl"><input type="checkbox" ${S.prefs.eq.includes(k)?"checked":""} onchange="toggleSilent('eq','${k}')"> ${l}</label>`).join("<br>")}`,
+ ()=>`<h2>Diet</h2>${DIETS.map(([k,l])=>`<label class="inl"><input type="radio" name="ob" ${S.prefs.diet===k?"checked":""} onchange="setPsilent('diet','${k}')"> ${l}</label>`).join("<br>")}`,
+ ()=>`<h2>Priorities</h2><p class="mut">Pick any; the first you pick is primary (change later in Settings).</p>${PRI.map(([k,l])=>`<label class="inl"><input type="checkbox" ${S.prefs.pri.includes(k)?"checked":""} onchange="toggleSilent('pri','${k}')"> ${l}</label>`).join("<br>")}`,
+ ()=>`<h2>Your pantry</h2><div class="row"><button onclick="loadPreset('sample');obNext()">Sample limited kitchen</button><button onclick="loadPreset('staples');obNext()">Indian staples</button></div>${adder()}`
+];
+function setPsilent(k,v){S.prefs[k]=v;save()}
+function toggleSilent(k,v){const a=S.prefs[k];S.prefs[k]=a.includes(v)?a.filter(x=>x!==v):a.concat(v);if(k==="pri"&&!S.prefs.pri.length)S.prefs.pri=["balanced"];save()}
+function obNext(){if(U.ob<OB.length-1){U.ob++;render()}else obDone()}
+function obDone(){S.onb=true;save();U.sheet=null;render()}
+function onbSheet(){return`<div class="sh"><div class="mut">Step ${U.ob+1} of ${OB.length}</div>${OB[U.ob]()}<div class="row">${U.ob?`<button onclick="U.ob--;render()">Back</button>`:""}<button class="pri" onclick="obNext()">${U.ob===OB.length-1?"Done":"Next"}</button><button onclick="obDone()">Skip for now</button></div></div>`}
+function safetySheet(){return`<div class="sh"><button class="x" onclick="closeSheet()" aria-label="Close">×</button><h2>Food safety</h2><ul>
+ <li>No fridge: cook only what you'll eat in one sitting. Cooked rice, pulses, paneer and egg dishes should not be kept at room temperature for later.</li>
+ <li>Dry channa and soya chunks are not ready-to-eat. Soak and cook them thoroughly.</li>
+ <li>Paneer is perishable. Buy it the day you cook, or keep it refrigerated as per the pack.</li>
+ <li>Opened tins, pouches and sauces: follow the product label. Smell and look alone don't prove food is safe.</li>
+ <li>Shelf life varies with heat, humidity and handling, so NoFridge never promises exact storage times.</li></ul>
+ <p class="mut small">Nutrition and price figures are approximate estimates from typical food-composition values, and you can edit prices.</p>
+ <p>Official sources: <a href="https://www.fssai.gov.in" target="_blank" rel="noopener">FSSAI</a> · <a href="https://www.who.int/health-topics/food-safety" target="_blank" rel="noopener">WHO food safety</a> · <a href="https://www.fsis.usda.gov/food-safety" target="_blank" rel="noopener">USDA FSIS</a></p></div>`}
+function sheetHtml(){const s=U.sheet;if(!s)return"";let b="";
+ if(s.type==="recipe")b=recipeSheet(rec(s.rid));else if(s.type==="cook"&&S.cook)b=cookSheet();else if(s.type==="finish"&&U.fin)b=finSheet();else if(s.type==="plan")b=planSheet();else if(s.type==="onb")b=onbSheet();else if(s.type==="safety")b=safetySheet();
+ return`<div class="ov" role="dialog" aria-modal="true">${b}</div>`}
+function render(){
+ const t=U.tab,m=t==="cook"?cookTab():t==="pantry"?pantryTab():t==="plan"?planTab():settingsTab();
+ $("app").innerHTML=header()+`<main>${m}</main>`+nav();$("sheet").innerHTML=sheetHtml();
+ try{document.body.style.overflow=U.sheet?"hidden":""}catch(e){}
+}
+if(typeof window!=="undefined"&&window.addEventListener){window.addEventListener("offline",()=>{U.off=true;render()});window.addEventListener("online",()=>{U.off=false;render()})}
+if(typeof navigator!=="undefined"){U.off=navigator.onLine===false;if(navigator.serviceWorker&&typeof location!=="undefined"&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{})}
+if(!S.onb&&!Object.keys(S.pantry).length)U.sheet={type:"onb"};
+render();
+
+</script></body></html>
