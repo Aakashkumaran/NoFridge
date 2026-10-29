@@ -1,1 +1,0 @@
-{"name":"NoFridge","short_name":"NoFridge","description":"Cook something good with what you have. No fridge required.","start_url":"./index.html","scope":"./","display":"standalone","background_color":"#f6f0e2","theme_color":"#1f3d2b","icons":[{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
